@@ -1,0 +1,104 @@
+---
+title: "Inferencial Statistics Project, Part 2"
+author: "Irina White"
+date: "18/04/2021"
+output: pdf_document
+---
+```{r setup, include=FALSE}
+options(tinytex.verbose = TRUE)
+knitr::opts_chunk$set(fig.width=12, fig.height=4) 
+```
+
+## Part 2: Basic Inferential Data Analysis
+The goal is to analyze the ToothGrowth data in the R datasets package.
+*Overview:* The ToothGrowth data set measures the growth of teeth [their length] in guinea pigs based on vitamin C given with orange juice or ascorbic acid. The Vitamin C dosage varies throughout the study.
+
+The analysis is set to test two hypotheses:
+- The effect if the supplement on the tooth grow
+- The effect of the dosage on the tooth grow
+
+```{r, include=FALSE}
+#upload data and required libraries
+library(reshape2)
+library(gplots)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+
+data(ToothGrowth)
+```
+
+
+```{r}
+head(ToothGrowth,3)
+```
+
+## Basic summary of the data.
+```{r}
+summary(ToothGrowth)
+```
+*Overview:* 
+60 cases in total, 30 with orange juice (OJ) and 30 with ascorbic acid (VC).
+The min dosage is 0.5 and max of 2.
+The observed growth of the teeth ranges between 4.2 and 33.9mm.
+```{r}
+ToothGrowth$dose<-as.factor(ToothGrowth$dose)
+ggplot(data=ToothGrowth, aes(dose, len, group=dose))+
+  geom_boxplot(aes(fill=dose))+
+  facet_grid(.~supp)+
+  ggtitle('Tooth Growth by Dosage with different supplements', )+
+  ylab('Tooth Length')+
+  xlab('Dose, mg')+
+  theme(plot.title=element_text(size=23), axis.text = element_text(size=16),
+        strip.text.x = element_text(size=20))
+
+```
+As it can be seen from the graph on average the higher dosage results in a better tooth grow.
+However, the effect of the supplements on the tooth growth is not as pronounced.
+Also there are not many outliers, except one in VC for 1mg dose and one in OJ for 2mg dose.
+
+## Basic exploratory data analyses
+```{r echo=FALSE, results='asis'}
+#split up and rearrange the data set into subsets of supplements and dosage;
+data_dose<-unstack(ToothGrowth, len~dose)
+data_supp<-unstack(ToothGrowth, len~supp)
+t<-kable(list(summary(data_dose),summary(data_supp)))
+kable_styling(t, latex_options = 'hold_position')
+```
+Basic data already shows significant difference in means and medians between the dosage groups, and some difference between the mean and median of the OJ vs VC group. Further investigation is required to confirm the significance of these differences.
+
+## Use confidence intervals and/or hypothesis tests to compare tooth growth by supp and dose. 
+**Supplements**
+First is the hypothesis test on a two independent samples of supplements
+```{r}
+t.test(data_supp$OJ,data_supp$VC, var.equal = FALSE)[3:4]
+```
+The p value is 0.06, which is higher than alpha (0.05).
+The Confidence intervals include 0.
+Therefore, there is no any statistical difference for any supplement.
+
+**Dose**
+First is the hypothesis test on set of two independent samples of supplements, total 3 pairs
+```{r}
+s1<-t.test(data_dose$X0.5,data_dose$X1, var.equal = FALSE)[3:4]
+s2<-t.test(data_dose$X0.5,data_dose$X2, var.equal = FALSE)[3:4]
+s3<-t.test(data_dose$X1,data_dose$X2, var.equal = FALSE)[3:4]
+p_value<-list(s1$p.value,s2$p.value,s3$p.value)
+conf_int<-list(round(s1$conf.int,2),round(s2$conf.int, 2),round(s3$conf.int,2))
+p_value<-as.data.frame(p_value, col.names = c('mg0.5vs1', 'mg0.5vs2', 'mg1vs2'))
+conf_int<-as.data.frame(conf_int, col.names = c('mg0.5vs1', 'mg0.5vs2', 'mg1vs2'), row.names = c('lower limit', 'upper limit'))
+t1<-kable(list(p_value, conf_int), caption='P values and confidence intervals for dosage')
+kable_styling(t1, latex_options = 'hold_position')
+```
+All p-values are extremely small, meanwhile t-test confidence intervals do not include zero and all show significant change as the dosage change. Especially in the pair 0.5mg vs 2mg.
+
+
+## Conclusions and the assumptions.
+Basic inferential statistics has been applied during this analysis to investigate the effect that various dosages of vitamin C (0.5mg, 1mg, 2mg) per day would have on the guinea pigs tooth growth rate. Similarly, the same approach has been used to analyze if there is any affect of supplements (Orange juice and Ascorbic Acid) that contain the Vitamin C dosage on the tooth growth. 
+Due to the small number of the sample the two sample two-sided t-test (95% confidence level) has been used for the analysis.
+**Key assumption:** the sample contain the independent population.
+
+**Conclusion:**
+* There is no significant difference between supplement usage.
+* There is a significant change influenced by the various dosage values. The higher the dosage - the longer the tooth length.
+
